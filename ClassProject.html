@@ -1,0 +1,277 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Model - World - Camera - Clipping - Screen</title>
+  <style>
+    .screen {
+      width: 640px;
+      height: 480px;
+      color: black;
+      text-align: center;
+      line-height: 400px;
+    }
+  </style>
+</head>
+
+<body onload="main()">
+
+
+  <template id="titleTemplate">
+    <div class="screen">
+      <canvas width="640" height="480" id="canv"></canvas>
+    </div>
+    <div>
+      <button onclick="update({name:'next'})">Next</button>
+    </div>
+  </template>
+
+  <template id="loadTemplate">
+    <div class="screen">
+      <canvas width = "640" height="480" id="loading"></canvas>
+    </div>
+    <div>
+      <button onclick="update({name:'next'})">Next</button>
+    </div>
+  </template>
+
+  <template id="runTemplate">
+    <div class="screen">
+      <div>Run Template</div>
+    </div>
+    <div>
+      <button onclick="update({name:'next'})">Next</button>
+    </div>
+  </template>
+
+  <template id="endTemplate">
+    <div class="screen">
+      <div>End Template</div>
+    </div>
+    <div>
+      <button onclick="update({name:'next'})">Next</button>
+    </div>
+  </template>
+
+  <div id="templateHere"></div>
+
+  <script>
+    //View Code
+    var titleTemplate, loadTemplate, runTemplate, endTemplate;
+    var templateHere;
+    function updateView() {
+      //Get initial values as needed
+      if (!titleTemplate)
+        titleTemplate = document.getElementById("titleTemplate");
+      if (!loadTemplate)
+        loadTemplate = document.getElementById("loadTemplate");
+      if (!runTemplate)
+        runTemplate = document.getElementById("runTemplate");
+      if (!endTemplate)
+        endTemplate = document.getElementById("endTemplate");
+      if (!templateHere)
+        templateHere = document.getElementById("templateHere");
+      var clone;
+      if (state == TITLE_STATE) {
+        clone = titleTemplate.content.cloneNode(true);
+      } else if (state == LOAD_STATE) {
+        var clone = loadTemplate.content.cloneNode(true);
+      } else if (state == RUN_STATE) {
+        var clone = runTemplate.content.cloneNode(true);
+      } else if (state == END_STATE) {
+        var clone = endTemplate.content.cloneNode(true);
+      } else {
+        return console.log("ERROR: Couldn't match state " + state);
+      }
+      templateHere.innerHTML = "";
+      templateHere.appendChild(clone);
+    }
+  </script>
+
+  <script>
+    //Controls
+    function main() {
+      setInterval(timer, 1000 / 30);
+      updateView();
+    }
+    var updateListeners = [];
+    function timer() {
+      update({ name: "timer" })
+    }
+    function update(event) {
+      for (let i = 0; i < updateListeners.length; i++) {
+        updateListeners[i].eventPump(event);
+      }
+    }
+  </script>
+
+
+
+
+  <script>
+    //Model code
+    //A variable that has my state
+    //JS is dynamcially typed
+    var state;
+    var stateHandler;
+    //A set of states we can be in
+    var TITLE_STATE = 1;
+    var LOAD_STATE = 2;
+    var RUN_STATE = 3;
+    var END_STATE = 4;
+    //Set our intital state
+    state = TITLE_STATE;
+    var titleStateHandler = {
+      start() {
+        updateListeners.push(this);
+        this.rotation = 0;
+      },
+      eventPump(event) {
+        switch (event.name) {
+          case "next":
+            state = LOAD_STATE;
+            updateListeners.splice(updateListeners.indexOf(this), 1);
+            updateStateHandler();
+            break;
+          case "timer":
+            this.update();
+            break;
+        }
+      },
+      update() {
+        this.canvas = document.getElementById("canv");
+        this.ctx = this.canvas.getContext("2d");
+        this.width = 640;
+        this.height = 480;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        this.rotation += .10;
+        let ctx = this.ctx;
+        ctx.fillStyle = "blue";
+        ctx.fillRect(0, 0, this.width, this.height);
+        //Add models to a world with a camera that maps to a screen
+        //Here's the pattern
+        //You (scale and rotate) then move an object to place it in the next level in the hierarchy.
+        //You (scale and rotate) then move a model to place it in the world.
+        //You (scale and rotate) then move the world to place it in the camera.
+        //In code, you do this backwards.
+        // 3 things we can do
+        // Scale -> Make things bigger or smaller. Scale < 1 shrinks, > 1 inflates.
+        // Rotate -> Rotate
+        // Translate -> Move
+        
+        //Often you want the center of the world (0,0) to be at the center of the screen.
+        //or at least to start there
+        ctx.translate(this.width / 2, this.height / 2);
+        //This is where we scale the world
+        ctx.scale(100, 100);
+        //We'll be in the world
+        
+        //The Ground
+        ctx.save()
+        {
+          ctx.fillStyle = "grey";
+          ctx.fillRect(-5, 2.01, 17, 1);
+        }
+        ctx.restore();
+
+        //Making the sun.
+        ctx.save()
+        {
+          ctx.translate(3,-2.5);
+          this.rotation += .3;
+          ctx.scale(.25, .25);
+          ctx.rotate(this.rotation);
+          ctx.fillStyle = "yellow";
+          ctx.fillRect(-1.5, -1.5, 3, 3);
+        }
+        ctx.restore();
+      }
+    };
+    var loadStateHandler = {
+      start() {
+        updateListeners.push(this);
+      },
+      eventPump(event) {
+        switch (event.name) {
+          case "next":
+            state = RUN_STATE;
+            updateListeners.splice(updateListeners.indexOf(this), 1);
+            updateStateHandler();
+            break;
+        }
+      },
+      update() {
+        this.canvas = document.getElementById("loading");
+        this.ctx = this.canvas.getContext("2d");
+        this.width = 640;
+        this.height = 480;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+
+        let ctx = this.ctx;
+        ctx.fillStyle = "red";
+        //change to black when configured.
+        ctx.fillRect(0, 0, this.width, this.height);
+      }
+    };
+    var runStateHandler = {
+      start() {
+        updateListeners.push(this);
+      },
+      eventPump(event) {
+        switch (event.name) {
+          case "next":
+            state = END_STATE;
+            updateListeners.splice(updateListeners.indexOf(this), 1);
+            updateStateHandler();
+            break;
+        }
+      }
+    };
+    var endStateHandler = {
+      start() {
+        updateListeners.push(this);
+      },
+      eventPump(event) {
+        switch (event.name) {
+          case "next":
+            state = TITLE_STATE;
+            updateListeners.splice(updateListeners.indexOf(this), 1);
+            updateStateHandler();
+            break;
+        }
+      },
+      update() {
+        this.canvas = document.getElementById("canv");
+        this.context = this.canvas.getContext("2d");
+        this.width = 640;
+        this.height = 480;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+
+        let context = this.context;
+        context.fillStyle = "Red";
+        //change to black when configured.
+        context.fillRect(0, 0, this.width, this.height);
+
+      }
+    };
+    updateStateHandler();
+    function updateStateHandler() {
+      if (state == TITLE_STATE) {
+        stateHandler = titleStateHandler;
+      } else if (state == LOAD_STATE) {
+        stateHandler = loadStateHandler;
+      } else if (state == RUN_STATE) {
+        stateHandler = runStateHandler;
+      } else if (state == END_STATE) {
+        stateHandler = endStateHandler;
+      }
+      updateView();
+      stateHandler.start();
+    }
+  </script>
+</body>
+
+</html>
